@@ -34,6 +34,57 @@ services:
       - data
     depends_on:
       - database-api-cursos
+  api-cursos:
+    build:
+        context: ./logs/
+        dockerfile: Dockerfile
+    image: api-cursos
+    container_name: api-cursos
+    environment:
+        - SPRING_REDIS_HOST=cache-api-cursos
+        - SPRING_DATASOURCE_URL=jdbc:postgres://localhost:5432/logsdb
+        - OTEL_SERVICE_NAME=api_cursos
+        - OTEL_TRACES_EXPORTER=otlp
+        - OTEL_METRICS_EXPORTER=none
+        - OTEL_INTEGRATION_JDBC_DATASOURCE_ENABLED=true
+        - OTEL_INSTRUMENTATION_JDBC_DATASOURCE_ENABLED=true
+        - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector-api-cursos:4318/
+        - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    restart: unless-stopped
+    ports:
+        - 8080:8080
+    networks:
+        - api
+        - data
+    healthcheck:
+        test: "curl -sS http://api-cursos:8080/actuator/health"
+        interval: 1s
+        timeout: 30s
+        retries: 60
+        depends_on:
+            - cache-api-cursos
+
+prometheus-api-cursos:
+    image: prom/prometheus:latest
+    user: "root:root"
+    container_name: prometheus-api-cursos
+    restart: unless-stopped
+    volumes:
+        - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        - ./prometheus/prometheus_data:/prometheus
+    command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.console.libraries=/etc/prometheus/console_libraries'
+        - '--web.console.templates=/etc/prometheus/consoles'
+        - '--web.enable-lifecycle'
+    ports:
+        - 9090:9090
+    networks:
+        - monit
+        - api
+    depends_on:
+        - api-cursos
 
   prometheus-api-cursos:
     image: prom/prometheus:latest
