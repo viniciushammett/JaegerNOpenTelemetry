@@ -1,3 +1,5 @@
+#create a folder called  collector to insert this file ==> mkdir collector
+
 receivers:
     otlp:
         protocols:
